@@ -70,21 +70,21 @@ func (e ResourceError) Error() string {
 
 // JSONResponse provides response encoded as JSON.
 func JSONResponse(w http.ResponseWriter, code int, data interface{}) {
-	w.Header()["Content-Type"] = []string{"application/json"}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	switch code {
 	case 204, 304:
 		/* no body */
 	default:
+		enc := json.NewEncoder(w)
 		if data == nil {
 			data = ResourceError{code, "Server Error"}
 		}
-		b, e := json.MarshalIndent(data, "", "  ")
-		if e != nil {
-			code = http.StatusInternalServerError
-			b, _ = json.MarshalIndent(ResourceError{500, "Server Error"}, "", "  ")
+		err := enc.Encode(data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			enc.Encode(ResourceError{http.StatusInternalServerError, fmt.Sprintf("Server Error:\t%s", err.Error())})
 		}
-		fmt.Fprintf(w, "%s\n", string(b))
 	}
 }
 
